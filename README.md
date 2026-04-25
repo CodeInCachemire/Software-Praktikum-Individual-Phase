@@ -39,25 +39,6 @@ Group work was strictly prohibited. Every design decision, line of code,
 and test was my own.
 
 ---
-## What I Extended
-
-The base simulation models corporations cleaning garbage from a hexagonal
-ocean grid using ships. My extension added:
-
-| Feature | Description |
-|---|---|
-| **Credit Economy** | Corporations earn credits by unloading garbage; spend them on repairs, refuels, and ship purchases. All actions are credit-gated with precise per-tick deduction ordering |
-| **Harbors as Entities** | Harbors migrated from boolean tile flags to first-class entities with configurable stations, ownership, and location |
-| **Shipyard Station** | Ships can be repaired here (1 tick, credit cost). Corporations can purchase new refueling ships with configurable delivery delays |
-| **Refueling Station** | Ships refuel fuel tanks or refueling capacity here, with limited usage counts before the station deactivates |
-| **Unloading Station** | Corporation-exclusive; ships unload collected garbage and earn credits per kg/liter |
-| **Refueling Ships** | Autonomous ships purchased mid-simulation. They track nearby low-fuel ships, manage their own fuel reserves, and decide whether they can safely reach a refueling station before committing to a movement |
-| **Typhoon Events** | Four-tier cascading effect system: fuel consumption increase → instrument destruction → garbage unloading → ship damage with modified kinematics until repaired |
-| **Damaged Ship FSM** | Typhoon-damaged ships enter a degraded state (reduced max velocity and acceleration), reroute to the nearest shipyard, and restore properties on successful repair |
-| **Extended JSON Parsing** | Modified parser and validator to handle new harbor entities, station properties, corporation credits, typhoon events, and refueling ship configuration — with both intra-file and cross-file consistency checks |
-| **Updated Ship Behavior** | Existing ship types gained new decision branches: respond to nearby refueling ships, reroute on damage, handle credit-insufficient scenarios gracefully |
-
----
 
 ## Design & Documentation
 
@@ -99,6 +80,45 @@ validation pass after all three files were parsed.
 
 ---
 
+## Engineering Challenges
+
+**Incomplete specification**
+Around a quarter of the given specification was contradictory or incorrectly defined,
+  which caused the benchmark server side test suite to be incorrect, requiring careful engineering that satisfied the test suite
+  without violating the correct behavior elsewhere.
+  
+**Deterministic correctness**
+Server-side tests compare exact log output. A single out-of-order log line
+or off-by-one in credit arithmetic fails the test. This required careful
+attention to execution order throughout the entire tick loop.
+
+**Behavioral surface area**
+A single new feature (e.g., refueling ships) touched movement logic,
+fuel calculations, pathfinding, logging, parsing, validation, and tests.
+Keeping changes isolated while ensuring correct interaction required
+disciplined use of existing module boundaries.
+
+---
+## What I Extended
+
+The base simulation models corporations cleaning garbage from a hexagonal
+ocean grid using ships. My extension added:
+
+| Feature | Description |
+|---|---|
+| **Credit Economy** | Corporations earn credits by unloading garbage; spend them on repairs, refuels, and ship purchases. All actions are credit-gated with precise per-tick deduction ordering |
+| **Harbors as Entities** | Harbors migrated from boolean tile flags to first-class entities with configurable stations, ownership, and location |
+| **Shipyard Station** | Ships can be repaired here (1 tick, credit cost). Corporations can purchase new refueling ships with configurable delivery delays |
+| **Refueling Station** | Ships refuel fuel tanks or refueling capacity here, with limited usage counts before the station deactivates |
+| **Unloading Station** | Corporation-exclusive; ships unload collected garbage and earn credits per kg/liter |
+| **Refueling Ships** | Autonomous ships purchased mid-simulation. They track nearby low-fuel ships, manage their own fuel reserves, and decide whether they can safely reach a refueling station before committing to a movement |
+| **Typhoon Events** | Four-tier cascading effect system: fuel consumption increase → instrument destruction → garbage unloading → ship damage with modified kinematics until repaired |
+| **Damaged Ship FSM** | Typhoon-damaged ships enter a degraded state (reduced max velocity and acceleration), reroute to the nearest shipyard, and restore properties on successful repair |
+| **Extended JSON Parsing** | Modified parser and validator to handle new harbor entities, station properties, corporation credits, typhoon events, and refueling ship configuration — with both intra-file and cross-file consistency checks |
+| **Updated Ship Behavior** | Existing ship types gained new decision branches: respond to nearby refueling ships, reroute on damage, handle credit-insufficient scenarios gracefully |
+
+---
+
 ## Architecture
 ```
 src/
@@ -137,27 +157,6 @@ Then (globally):
 | **Integration** | Multi-component scenarios: typhoon → damage → pathfinding → shipyard → repair → restored behavior |
 | **System** | Full simulation runs validated against exact expected log output |
 | **Mutation** | Targeted system tests designed to catch behavioral faults in a faulty reference implementation — 8/10 injected faults detected |
-
----
-
-## Engineering Challenges
-
-**Incomplete specification**
-Around a quarter of the specification was contradictory or undefined.
-Every ambiguity required a documented decision rather than a guess,
-since the same interpretation had to be consistent across implementation,
-tests, and the written project description.
-
-**Deterministic correctness**
-Server-side tests compare exact log output. A single out-of-order log line
-or off-by-one in credit arithmetic fails the test. This required careful
-attention to execution order throughout the entire tick loop.
-
-**Behavioral surface area**
-A single new feature (e.g., refueling ships) touched movement logic,
-fuel calculations, pathfinding, logging, parsing, validation, and tests.
-Keeping changes isolated while ensuring correct interaction required
-disciplined use of existing module boundaries.
 
 ---
 
